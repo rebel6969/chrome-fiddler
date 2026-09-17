@@ -40,6 +40,12 @@ Captured the same way Chrome DevTools does it:
 
 ## Limits
 
+- Some requests only ever have **provisional** headers: Chrome reports
+  `hasExtraInfo: false` for them (typically scripts, images, fonts and styles
+  loaded by the page), so the sent headers do not exist for any debugger client;
+  DevTools shows "Provisional headers are shown" for the same requests. The
+  dashboard labels them. Fetch/XHR API calls carry their real headers.
+- Resources of other installed extensions (`chrome-extension://`) are not recorded.
 - `chrome.debugger.attach` is asynchronous and Chrome does not hold a navigation
   for it. In a tab opened directly onto a captured site, the page's own document
   request and fetches issued in its first moments can precede the attach and go

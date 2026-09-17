@@ -227,7 +227,13 @@ function applyResponse(record, response) {
   record.fromCache = Boolean(response.fromDiskCache || response.fromPrefetchCache || response.fromServiceWorker);
 }
 
+// Resources of other installed extensions (scripts they inject into the page)
+// show up in the page's network events but are not the site's traffic, cannot be
+// replayed with cURL, and would store those extensions' source code.
+const IGNORED_SCHEMES = /^chrome-extension:/;
+
 function onRequestWillBeSent(tabId, params) {
+  if (IGNORED_SCHEMES.test(params.request.url)) { return; }
   const id = `${tabId}:${params.requestId}`;
   let state = inflight.get(id);
   if (state && params.redirectResponse) {
@@ -294,7 +300,7 @@ function onRequestWillBeSent(tabId, params) {
           save(record);
         }
       })
-      .catch(err => logger.warn(`getRequestPostData failed: ${err.message}`, { tabId, url: record.url }));
+      .catch(err => logger.warn(`getRequestPostData failed: ${protocolErrorMessage(err)}`, { tabId, url: record.url }));
   }
   save(record);
 }
@@ -354,10 +360,21 @@ function onLoadingFinished(tabId, params) {
       record.base64Encoded = result.base64Encoded;
     })
     .catch(err => {
-      // Expected for some resources (e.g. evicted from the buffer); recorded, not logged.
-      record.bodyOmitted = err.message;
+      // Expected for some resources (e.g. evicted from the buffer); recorded, not
+      // logged. chrome.debugger reports protocol errors as a JSON string
+      // ({"code":-32000,"message":"..."}); keep only the message.
+      record.bodyOmitted = protocolErrorMessage(err);
     })
     .finally(() => save(record));
+}
+
+function protocolErrorMessage(err) {
+  const text = String(err?.message ?? err);
+  try {
+    const parsed = JSON.parse(text);
+    if (typeof parsed?.message === 'string') { return parsed.message; }
+  } catch { /* not JSON */ }
+  return text;
 }
 
 function onLoadingFailed(tabId, params) {
