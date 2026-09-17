@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Chrome Fiddler - Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    
+    #sidebar {
+      width: 350px;
+      border-right: 1px solid var(--surface-border);
+      display: flex;
+      flex-direction: column;
+      background: rgba(17, 24, 39, 0.4);
+      backdrop-filter: blur(20px);
+    }
+    header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--surface-border);
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      background: linear-gradient(to right, var(--accent), #22d3ee);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.025em;
+    }
+
+    .sidebar-section {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--surface-border);
+    }
+
+    h2 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1rem;
+    }
+
+    select.btn-ghost {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--surface-border);
+      color: var(--text-primary);
+      padding: 0.5rem;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+    }
+
+    select.btn-ghost option {
+      background: #1e293b;
+      color: white;
+    }
+
+    #requestList {
+      flex: 1;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      overflow-y: auto;
+    }
+    .request-item {
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--surface-border);
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .request-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--accent);
+    }
+    .request-item.active {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+    }
+
+    #detailView {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+      background: rgba(3, 7, 18, 0.2);
+    }
+    
+    .placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-secondary);
+      opacity: 0.5;
+    }
+
+    .method-badge {
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-sm);
+      text-transform: uppercase;
+      background: var(--accent-glow);
+      color: var(--accent);
+      display: inline-block;
+    }
+
+    pre.code-block {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1.5rem;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--surface-border);
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <header>
+      <h1>FIDDLER DASHBOARD</h1>
+    </header>
+    
+    <div class="sidebar-section">
+      <h2>SITE FILTER</h2>
+      <select id="siteFilter" class="btn-ghost" style="margin-bottom: 1.5rem;">
+        <option value="">All Captured Sites</option>
+      </select>
+      
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <button id="exportFiltered" class="btn btn-primary" style="width: 100%; font-size: 0.85rem;">
+          📥 Export Filtered cURLs
+        </button>
+        <button id="exportAllFull" class="btn btn-ghost" style="width: 100%; font-size: 0.85rem;">
+          📦 Full JSON Export
+        </button>
+        <button id="clearAll" class="btn btn-danger" style="width: 100%; font-size: 0.85rem; margin-top: 1rem; opacity: 0.8;">
+          🗑️ Clear All Data
+        </button>
+      </div>
+    </div>
+
+    <div id="requestList">
+      <!-- Requests will appear here -->
+    </div>
+  </div>
+
+  <div id="detailView">
+    <div class="placeholder">
+      <p>Select a request from the list to view full details</p>
+    </div>
+  </div>
+
+  <script src="manager.js"></script>
+</body>
+</html>

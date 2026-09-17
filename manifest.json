@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Chrome Fiddler",
+  "version": "1.3.6",
+  "description": "Capture network requests and generate curl commands using the Debugger API.",
+  "permissions": [
+    "debugger",
+    "tabs",
+    "storage",
+    "activeTab",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "fiddler16.png",
+      "48": "fiddler48.png",
+      "128": "fiddler128.png"
+    }
+  },
+  "icons": {
+    "16": "fiddler16.png",
+    "48": "fiddler48.png",
+    "128": "fiddler128.png"
+  }
+}
