@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Chrome Fiddler",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Capture network requests and generate curl commands using the Debugger API.",
   "minimum_chrome_version": "121",
   "permissions": [

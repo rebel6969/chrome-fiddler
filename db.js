@@ -209,7 +209,6 @@ class FiddlerDB {
   }
 
   clearTab(tabId) { return this._deleteByIndex('tabId', tabId); }
-  clearPageOrigin(pageOrigin) { return this._deleteByIndex('pageOrigin', pageOrigin); }
 
   async clearAll() {
     this.pending.clear();

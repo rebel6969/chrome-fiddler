@@ -97,8 +97,6 @@ stopBtn.addEventListener('click', async () => {
   stopBtn.disabled = true;
   try {
     await send('stopSiteCapture', { origin });
-    requestList.replaceChildren();
-    cards.clear();
   } finally {
     stopBtn.disabled = false;
     refreshStatus();

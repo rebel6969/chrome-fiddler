@@ -21,8 +21,9 @@ Requires Chrome 121 or newer.
 - **↗ Dash** opens the dashboard: filter by site, view request and response
   headers, payload and response body, copy cURL for bash or Windows cmd, or
   export everything as JSON.
-- **STOP CAPTURE** detaches and deletes that site's captures. Captures are also
-  cleared when the browser starts and every 4 hours.
+- **STOP CAPTURE** stops recording; everything captured stays in the popup and
+  dashboard. **Clear** deletes captures; they are also cleared when the browser
+  starts and every 4 hours.
 
 ## What is captured
 

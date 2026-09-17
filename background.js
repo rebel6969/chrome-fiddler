@@ -160,10 +160,9 @@ async function stopSiteCapture(origin) {
   await saveSiteCaptures();
   const tabs = await chrome.tabs.query({ url: `${origin}/*` });
   await Promise.all(tabs.filter(t => attachedTabs.has(t.id)).map(t => detachFromTab(t.id)));
-  // Captures are grouped and shown by page origin, so that is what is cleared.
-  // (This previously cleared by request origin, which removed the site's own
-  // same-origin requests but left all its third-party requests behind.)
-  await db.clearPageOrigin(origin);
+  // Stopping only stops capturing. What was captured stays available in the
+  // popup and dashboard until the user clears it (or the startup / periodic
+  // cleanup runs), so a session can be reviewed and exported after stopping.
   logger.info(`site capture stopped for ${origin}`);
 }
 
