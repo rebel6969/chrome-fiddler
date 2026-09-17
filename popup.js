@@ -1,148 +1,138 @@
-document.addEventListener('DOMContentLoaded', async () => {
-  const startBtn = document.getElementById('startBtn');
-  const stopBtn = document.getElementById('stopBtn');
-  const openManager = document.getElementById('openManager');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const clearBtn = document.getElementById('clearBtn');
-  const requestList = document.getElementById('requestList');
+import {
+  send, subscribe, el, splitUrl, downloadText, copyWithFeedback, curlExport, generateCurl, byTimestampDesc,
+} from './ui.js';
 
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  let origin = null;
+// Rendering thousands of cards makes the popup sluggish; the dashboard lists all.
+const MAX_CARDS = 200;
+
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const openManager = document.getElementById('openManager');
+const downloadBtn = document.getElementById('downloadBtn');
+const clearBtn = document.getElementById('clearBtn');
+const requestList = document.getElementById('requestList');
+
+const [ tab ] = await chrome.tabs.query({ active: true, currentWindow: true });
+let origin = null;
+try {
+  if (tab?.url && /^(https?|file):/.test(tab.url)) {
+    const o = new URL(tab.url).origin;
+    origin = o === 'null' ? null : o;
+  }
+} catch (err) {
+  console.error('failed to parse tab URL', err);
+}
+
+const cards = new Map(); // record key -> card element
+
+function setCapturing(isCapturing) {
+  startBtn.style.display = isCapturing ? 'none' : 'block';
+  stopBtn.style.display = isCapturing ? 'block' : 'none';
+}
+
+async function refreshStatus() {
+  if (!origin) {
+    startBtn.disabled = true;
+    stopBtn.disabled = true;
+    startBtn.title = 'Cannot capture this type of page (e.g. chrome:// or system pages)';
+    return;
+  }
   try {
-    if (tab && tab.url && (tab.url.startsWith('http') || tab.url.startsWith('file'))) {
-      origin = new URL(tab.url).origin;
-    }
-  } catch (e) {
-    console.error("Failed to parse tab URL:", e);
+    const { isCapturing } = await send('getSiteCaptureStatus', { origin });
+    setCapturing(isCapturing);
+  } catch (err) {
+    console.warn('status check failed', err);
   }
+}
 
-  async function refreshUI() {
-    if (!origin) {
-      startBtn.disabled = true;
-      stopBtn.disabled = true;
-      startBtn.title = "Cannot capture this type of page (e.g. chrome:// or system pages)";
-      return;
-    }
-
-    try {
-      const siteStatus = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage({ action: "getSiteCaptureStatus", origin }, (response) => {
-          if (chrome.runtime.lastError) {
-            resolve({ isCapturing: false });
-          } else {
-            resolve(response);
-          }
-        });
-      });
-      const isSiteActive = siteStatus && siteStatus.isCapturing;
-
-      if (isSiteActive) {
-        startBtn.style.display = 'none';
-        stopBtn.style.display = 'block';
-      } else {
-        startBtn.style.display = 'block';
-        stopBtn.style.display = 'none';
-      }
-    } catch (e) {
-      console.warn("Refresh UI failed:", e);
-    }
-  }
-
-  startBtn.onclick = async () => {
-    await chrome.runtime.sendMessage({ action: "startSiteCapture", origin });
-    refreshUI();
-  };
-
-  stopBtn.onclick = async () => {
-    await chrome.runtime.sendMessage({ action: "stopSiteCapture", origin });
-    refreshUI();
-  };
-
-  openManager.onclick = () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL(`manager.html`) });
-  };
-
-  clearBtn.onclick = () => {
-    if (confirm("Clear all captured logs?")) {
-      chrome.runtime.sendMessage({ action: "clearAll" }, () => {
-        requestList.innerHTML = '';
-      });
-    }
-  };
-
-  downloadBtn.onclick = () => {
-    chrome.runtime.sendMessage({ action: "getRequestsByOrigin", origin }, (response) => {
-      if (response && response.requests && response.requests.length > 0) {
-        let content = `Fiddler Session - ${origin}\n\n`;
-        response.requests.forEach((req, i) => {
-          content += `--- Request #${i + 1} ---\n`;
-          content += `${req.method} ${req.url}\n`;
-          content += `cURL: ${generateCurl(req)}\n\n`;
-        });
-        downloadFile(content, `fiddler_${encodeURIComponent(origin)}.txt`);
-      } else {
-        alert("No requests captured for this site yet.");
-      }
-    });
-  };
-
-  function downloadFile(content, filename) {
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  function renderRequest(req) {
-    const card = document.createElement('div');
-    card.className = 'request-card glass animate-in';
-    const url = new URL(req.url);
-    card.innerHTML = `
-      <div class="request-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-        <span class="method-badge">${req.method}</span>
-        <span style="font-size: 0.7rem; color: var(--text-secondary);">${url.host}</span>
-      </div>
-      <div class="url-text" title="${req.url}">${url.pathname}</div>
-      <button class="btn btn-ghost" style="width: 100%; font-size: 0.7rem; padding: 0.4rem;">Copy as cURL</button>
-    `;
-    
-    card.querySelector('button').onclick = (e) => {
-      e.stopPropagation();
-      const curl = generateCurl(req);
-      navigator.clipboard.writeText(curl);
-      const originalText = e.target.innerText;
-      e.target.innerText = 'Copied!';
-      e.target.classList.add('btn-success');
-      setTimeout(() => {
-        e.target.innerText = originalText;
-        e.target.classList.remove('btn-success');
-      }, 2000);
-    };
-    requestList.prepend(card);
-  }
-
-  function generateCurl(req) {
-    let curl = `curl '${req.url}' -X ${req.method}`;
-    for (const [key, value] of Object.entries(req.headers || {})) {
-      curl += ` -H '${key}: ${value}'`;
-    }
-    if (req.postData) curl += ` --data-raw '${req.postData}'`;
-    return curl;
-  }
-
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.action === "newRequest") renderRequest(message.request);
+function renderCard(req) {
+  const { host, path } = splitUrl(req.url);
+  const copy = el('button', { className: 'btn btn-ghost', text: 'Copy as cURL', style: { width: '100%', fontSize: '0.7rem', padding: '0.4rem' } });
+  copy.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const curl = generateCurl(req);
+    if (curl === null) { copy.textContent = 'Unsupported URL scheme'; return; }
+    copyWithFeedback(copy, curl);
   });
+  const status = req.status ? `${req.status}` : (req.errorText ? 'failed' : '');
+  return el('div', { className: 'request-card glass animate-in' }, [
+    el('div', { className: 'request-header', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' } }, [
+      el('span', { className: 'method-badge', text: req.method }),
+      el('span', { text: status ? `${status} · ${host}` : host, style: { fontSize: '0.7rem', color: 'var(--text-secondary)' } }),
+    ]),
+    el('div', { className: 'url-text', text: path, title: req.url }),
+    copy,
+  ]);
+}
 
-  // Initial load
-  refreshUI();
-  if (origin) {
-    chrome.runtime.sendMessage({ action: "getRequestsByOrigin", origin }, (response) => {
-      if (chrome.runtime.lastError) return;
-      if (response && response.requests) response.requests.forEach(renderRequest);
-    });
+function upsert(req) {
+  const existing = cards.get(req.key);
+  const card = renderCard(req);
+  if (existing) {
+    existing.replaceWith(card);
+  } else {
+    requestList.prepend(card);
+    if (cards.size >= MAX_CARDS) {
+      const oldest = requestList.lastElementChild;
+      if (oldest) {
+        oldest.remove();
+        for (const [ k, v ] of cards) { if (v === oldest) { cards.delete(k); break; } }
+      }
+    }
+  }
+  cards.set(req.key, card);
+}
+
+startBtn.addEventListener('click', async () => {
+  startBtn.disabled = true;
+  try {
+    await send('startSiteCapture', { origin });
+  } finally {
+    startBtn.disabled = false;
+    refreshStatus();
   }
 });
+
+stopBtn.addEventListener('click', async () => {
+  stopBtn.disabled = true;
+  try {
+    await send('stopSiteCapture', { origin });
+    requestList.replaceChildren();
+    cards.clear();
+  } finally {
+    stopBtn.disabled = false;
+    refreshStatus();
+  }
+});
+
+openManager.addEventListener('click', () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('manager.html') });
+});
+
+clearBtn.addEventListener('click', async () => {
+  if (!confirm('Clear all captured logs?')) { return; }
+  await send('clearAll');
+  requestList.replaceChildren();
+  cards.clear();
+});
+
+downloadBtn.addEventListener('click', async () => {
+  const { requests } = await send('getRequestsByOrigin', { origin });
+  if (!requests.length) { alert('No requests captured for this site yet.'); return; }
+  requests.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+  downloadText(curlExport(`Fiddler Session - ${origin}`, requests, generateCurl), `fiddler_${encodeURIComponent(origin)}.txt`);
+});
+
+await refreshStatus();
+if (origin) {
+  subscribe(requests => {
+    for (const req of requests) { if (req.pageOrigin === origin) { upsert(req); } }
+  });
+  try {
+    const { requests } = await send('getRequestsByOrigin', { origin });
+    // Oldest first so prepend leaves the newest on top; only the newest MAX_CARDS.
+    requests.sort(byTimestampDesc).slice(0, MAX_CARDS).reverse().forEach(upsert);
+  } catch (err) {
+    console.warn('loading captures failed', err);
+  }
+}

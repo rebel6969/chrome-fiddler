@@ -8,6 +8,7 @@
   --text-secondary: #94a3b8;
   --success: #10b981;
   --error: #ef4444;
+  --danger: var(--error); /* used by the pages; was never defined */
   --font-main: 'Inter', system-ui, -apple-system, sans-serif;
   --radius-lg: 12px;
   --radius-md: 8px;
